@@ -23,6 +23,11 @@ body {
   filter: grayscale(0.2) brightness(0.95);
 }
 
+.custom-marker {
+  border: none;
+  background: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -1,63 +1,35 @@
 import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
-  AppBar,
   Box,
-  CssBaseline,
-  Drawer,
   IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
+  Menu,
+  MenuItem,
   Typography,
-  useTheme,
-  useMediaQuery,
-  Alert,
-  Snackbar,
+  Avatar,
+  Badge,
+  Tooltip,
+  Paper,
+  Divider,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
-  Home as HomeIcon,
   Person as PersonIcon,
-  Map as MapIcon,
-  LocalTaxi as RideIcon,
-  Warning as EmergencyIcon,
   Logout as LogoutIcon,
+  Notifications as NotificationsIcon,
+  Home as HomeIcon,
+  Map as MapIcon,
 } from '@mui/icons-material';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
-
-const drawerWidth = 240;
-
-interface MenuItem {
-  text: string;
-  icon: React.ReactNode;
-  path: string;
-}
+import { RootState } from '../../store';
 
 const Layout = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const menuItems: MenuItem[] = [
-    { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
-    { text: 'Map', icon: <MapIcon />, path: '/map' },
-    { text: 'Request Ride', icon: <RideIcon />, path: '/ride-request' },
-    { text: 'Emergency', icon: <EmergencyIcon />, path: '/emergency' },
-  ];
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const handleLogout = async () => {
     try {
@@ -72,118 +44,124 @@ const Layout = () => {
   };
 
   const handleNavigation = (path: string) => {
-    try {
-      navigate(path);
-    } catch (err) {
-      setError('Navigation failed. Please try again.');
-    }
+    navigate(path);
+    handleUserMenuClose();
   };
 
-  const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          HitchHiking
-        </Typography>
-      </Toolbar>
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => handleNavigation(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-        <ListItem disablePadding>
-          <ListItemButton onClick={handleLogout} disabled={isLoading}>
-            <ListItemIcon>
-              <LogoutIcon />
-            </ListItemIcon>
-            <ListItemText primary="Logout" />
-          </ListItemButton>
-        </ListItem>
-      </List>
-    </div>
-  );
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
+    <Box sx={{ minHeight: '100vh', position: 'relative' }}>
+      {/* Floating Action Container */}
+      <Paper
+        elevation={0}
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          position: 'fixed',
+          top: 16,
+          right: 16,
+          zIndex: 1200,
+          bgcolor: '#000000',
+          borderRadius: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          p: 1,
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+        <Tooltip title="Home">
+          <IconButton 
+            onClick={() => handleNavigation('/')}
+            sx={{ color: '#ffffff' }}
           >
-            <MenuIcon />
+            <HomeIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            HitchHiking App
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{
-              keepMounted: true,
-            }}
+        </Tooltip>
+
+        <Tooltip title="Map">
+          <IconButton 
+            onClick={() => handleNavigation('/map')}
+            sx={{ color: '#ffffff' }}
+          >
+            <MapIcon />
+          </IconButton>
+        </Tooltip>
+
+        <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
+
+        <Tooltip title="Notifications">
+          <IconButton sx={{ color: '#ffffff' }}>
+            <Badge badgeContent={3} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Account settings">
+          <IconButton onClick={handleUserMenuOpen} sx={{ color: '#ffffff' }}>
+            <Avatar sx={{ bgcolor: '#333333', width: 32, height: 32 }}>
+              {user?.name?.charAt(0) || 'U'}
+            </Avatar>
+          </IconButton>
+        </Tooltip>
+
+        {/* User Menu */}
+        <Menu
+          anchorEl={userMenuAnchor}
+          open={Boolean(userMenuAnchor)}
+          onClose={handleUserMenuClose}
+          sx={{
+            '& .MuiPaper-root': {
+              bgcolor: '#000000',
+              color: '#ffffff',
+              width: 200,
+              mt: 1,
+            },
+          }}
+        >
+          <MenuItem
+            onClick={() => handleNavigation('/profile')}
             sx={{
-              display: { xs: 'block', sm: 'none' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              gap: 2,
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.1)',
+              },
             }}
           >
-            {drawer}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="permanent"
+            <PersonIcon />
+            <Typography>Profile</Typography>
+          </MenuItem>
+          <MenuItem
+            onClick={handleLogout}
+            disabled={isLoading}
             sx={{
-              display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              gap: 2,
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.1)',
+              },
             }}
-            open
           >
-            {drawer}
-          </Drawer>
-        )}
-      </Box>
+            <LogoutIcon />
+            <Typography>Logout</Typography>
+          </MenuItem>
+        </Menu>
+      </Paper>
+
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: '64px',
+          bgcolor: '#ffffff',
         }}
       >
         <Outlet />
       </Box>
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-      >
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

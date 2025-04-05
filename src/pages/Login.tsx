@@ -1,216 +1,222 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
-  Button,
-  TextField,
+  Container,
   Typography,
-  Paper,
-  IconButton,
-  InputAdornment,
+  TextField,
+  Button,
   Link,
+  Paper,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
   Alert,
-  Divider,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
 import {
+  Email as EmailIcon,
+  Lock as LockIcon,
   Visibility,
   VisibilityOff,
-  Google,
-  Facebook,
-  Apple,
 } from '@mui/icons-material';
 import { useDispatch } from 'react-redux';
-import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
+import { login } from '../store/slices/authSlice';
 
-const LoginContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'linear-gradient(135deg, #000000 0%, #1a1a1a 100%)',
-  padding: theme.spacing(2),
-}));
-
-const LoginPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  maxWidth: 400,
-  width: '100%',
-  backgroundColor: '#ffffff',
-  borderRadius: 12,
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-}));
-
-const Logo = styled(Typography)(({ theme }) => ({
-  fontSize: '2rem',
-  fontWeight: 700,
-  marginBottom: theme.spacing(3),
-  color: '#000000',
-}));
-
-const SocialButton = styled(Button)(({ theme }) => ({
-  width: '100%',
-  marginBottom: theme.spacing(2),
-  textTransform: 'none',
-  borderRadius: 8,
-  padding: theme.spacing(1),
-  border: '1px solid rgba(0, 0, 0, 0.1)',
-  '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-}));
-
-const Login: React.FC = () => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const [showPassword, setShowPassword] = useState(false);
+const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    if (error) setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setIsLoading(true);
+    setError(null);
 
     try {
-      dispatch(loginStart());
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (formData.email === 'test@example.com' && formData.password === 'password') {
-        dispatch(loginSuccess({
-          id: '1',
-          name: 'Test User',
-          email: formData.email,
-          profileImage: 'https://via.placeholder.com/150',
-        }));
-        navigate('/');
+      // For development with mock API
+      if (formData.email === 'test@example.com' && formData.password === 'password123') {
+        const result = await dispatch(login({ email: formData.email, password: formData.password }));
+        if (result.meta.requestStatus === 'fulfilled') {
+          navigate('/');
+        } else {
+          throw new Error('Login failed. Please try again.');
+        }
       } else {
-        throw new Error('Invalid credentials');
+        throw new Error('Invalid credentials. Use test@example.com / password123 for testing.');
       }
     } catch (err) {
-      setError('Invalid email or password');
-      dispatch(loginFailure(err instanceof Error ? err.message : 'Login failed'));
+      setError(err instanceof Error ? err.message : 'An error occurred during login');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <LoginContainer>
-      <LoginPaper>
-        <Logo>HitchHiking</Logo>
-        <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-          Sign in to your account
-        </Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        background: 'linear-gradient(to bottom, #ffffff 0%, #f5f5f5 100%)',
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, md: 6 },
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            border: '1px solid #e5e5e5',
+            borderRadius: 2,
+          }}
+        >
+          <Typography
+            variant="h4"
+            sx={{
+              mb: 3,
+              fontWeight: 800,
+              background: 'linear-gradient(45deg, #000000 30%, #333333 90%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Welcome Back
+          </Typography>
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
               {error}
             </Alert>
           )}
 
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            margin="normal"
-            required
-            sx={{ mb: 2 }}
-          />
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              value={formData.email}
+              onChange={handleChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  '&:hover fieldset': {
+                    borderColor: '#000000',
+                  },
+                },
+              }}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              autoComplete="current-password"
+              value={formData.password}
+              onChange={handleChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  '&:hover fieldset': {
+                    borderColor: '#000000',
+                  },
+                },
+              }}
+            />
 
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleChange}
-            margin="normal"
-            required
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 3 }}
-          />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={isLoading}
+              sx={{
+                py: 1.5,
+                mb: 2,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: '1rem',
+                boxShadow: 'none',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                },
+              }}
+            >
+              {isLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                'Sign In'
+              )}
+            </Button>
 
-          <Button
-            fullWidth
-            variant="contained"
-            type="submit"
-            sx={{
-              mb: 2,
-              py: 1.5,
-              backgroundColor: '#000000',
-              '&:hover': {
-                backgroundColor: '#333333',
-              },
-            }}
-          >
-            Sign In
-          </Button>
-
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Link href="#" underline="hover" sx={{ color: 'text.primary' }}>
-              Forgot password?
-            </Link>
-          </Box>
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Or continue with
-            </Typography>
-          </Divider>
-
-          <SocialButton startIcon={<Google />}>
-            Continue with Google
-          </SocialButton>
-          <SocialButton startIcon={<Facebook />}>
-            Continue with Facebook
-          </SocialButton>
-          <SocialButton startIcon={<Apple />}>
-            Continue with Apple
-          </SocialButton>
-
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
+            <Box sx={{ textAlign: 'center' }}>
               <Link
-                component="button"
+                component={RouterLink}
+                to="/register"
                 variant="body2"
-                onClick={() => navigate('/register')}
-                sx={{ color: 'primary.main', fontWeight: 600 }}
+                sx={{
+                  color: 'text.primary',
+                  textDecoration: 'none',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                  },
+                }}
               >
-                Sign up
+                Don't have an account? Sign Up
               </Link>
-            </Typography>
+            </Box>
           </Box>
-        </Box>
-      </LoginPaper>
-    </LoginContainer>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

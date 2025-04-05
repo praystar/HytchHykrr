@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { authService } from '../../services/api';
 
 interface EmergencyContact {
   name: string;
@@ -21,10 +22,35 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
 }
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterCredentials {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+// Mock user data for development
+const mockUser: User = {
+  id: '1',
+  name: 'Test User',
+  email: 'test@example.com',
+  phoneNumber: '+1234567890',
+  isVerified: true,
+  rating: 4.8,
+  emergencyContacts: [],
+  accountType: 'passenger',
+};
 
 const validateUser = (user: Partial<User>): string | null => {
   if (!user.name?.trim()) return 'Name is required';
@@ -40,52 +66,92 @@ const validateEmergencyContact = (contact: Partial<EmergencyContact>): string | 
   return null;
 };
 
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  loading: false,
-  error: null,
+// Load initial state from localStorage
+const loadInitialState = (): AuthState => {
+  const token = localStorage.getItem('token');
+  const refreshToken = localStorage.getItem('refreshToken');
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+
+  return {
+    user,
+    token,
+    refreshToken,
+    isAuthenticated: !!token,
+    loading: false,
+    error: null,
+  };
 };
+
+const initialState: AuthState = loadInitialState();
+
+// Async thunks
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
+    try {
+      // Mock API response for development
+      if (credentials.email === 'test@example.com' && credentials.password === 'password123') {
+        const response = {
+          user: mockUser,
+          token: 'mock-token',
+          refreshToken: 'mock-refresh-token',
+        };
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('refreshToken', response.refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        return response;
+      }
+      throw new Error('Invalid credentials. Use test@example.com / password123 for testing.');
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Login failed');
+    }
+  }
+);
+
+export const register = createAsyncThunk(
+  'auth/register',
+  async (credentials: RegisterCredentials, { rejectWithValue }) => {
+    try {
+      // Mock API response for development
+      const response = {
+        user: {
+          ...mockUser,
+          name: `${credentials.firstName} ${credentials.lastName}`,
+          email: credentials.email,
+        },
+        token: 'mock-token',
+        refreshToken: 'mock-refresh-token',
+      };
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Registration failed');
+    }
+  }
+);
+
+export const logout = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      return null;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Logout failed');
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginStart: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
-      state.loading = false;
-      state.isAuthenticated = true;
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.error = null;
-    },
-    loginFailure: (state, action: PayloadAction<string>) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
-    registerStart: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
-    registerSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
-      state.loading = false;
-      state.isAuthenticated = true;
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.error = null;
-    },
-    registerFailure: (state, action: PayloadAction<string>) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
+    clearError: (state) => {
       state.error = null;
     },
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
@@ -98,6 +164,7 @@ const authSlice = createSlice({
       }
 
       state.user = { ...state.user, ...action.payload };
+      localStorage.setItem('user', JSON.stringify(state.user));
       state.error = null;
     },
     addEmergencyContact: (state, action: PayloadAction<EmergencyContact>) => {
@@ -110,6 +177,7 @@ const authSlice = createSlice({
       }
 
       state.user.emergencyContacts.push(action.payload.phone);
+      localStorage.setItem('user', JSON.stringify(state.user));
       state.error = null;
     },
     removeEmergencyContact: (state, action: PayloadAction<string>) => {
@@ -118,21 +186,64 @@ const authSlice = createSlice({
       state.user.emergencyContacts = state.user.emergencyContacts.filter(
         contact => contact !== action.payload
       );
+      localStorage.setItem('user', JSON.stringify(state.user));
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Login cases
+      .addCase(login.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
+        state.error = null;
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Register cases
+      .addCase(register.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
+        state.error = null;
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Logout cases
+      .addCase(logout.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.loading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.error = null;
+      })
+      .addCase(logout.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
   },
 });
 
-export const {
-  loginStart,
-  loginSuccess,
-  loginFailure,
-  registerStart,
-  registerSuccess,
-  registerFailure,
-  logout,
-  updateUser,
-  addEmergencyContact,
-  removeEmergencyContact,
-} = authSlice.actions;
+export const { clearError, updateUser, addEmergencyContact, removeEmergencyContact } = authSlice.actions;
 
 export default authSlice.reducer; 

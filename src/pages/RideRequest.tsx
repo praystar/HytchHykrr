@@ -59,21 +59,21 @@ const RideRequest = () => {
   const availableDrivers: Driver[] = [
     {
       id: '1',
-      name: 'John Doe',
+      name: 'Person 1',
       rating: 4.8,
       vehicle: 'Toyota Camry 2020',
       departureTime: '09:00 AM',
-      price: 25,
+      price: 250,
       availableSeats: 2,
       profileImage: 'https://via.placeholder.com/150',
     },
     {
       id: '2',
-      name: 'Jane Smith',
+      name: 'Person 2',
       rating: 4.9,
       vehicle: 'Honda Civic 2021',
       departureTime: '10:30 AM',
-      price: 20,
+      price: 200,
       availableSeats: 1,
       profileImage: 'https://via.placeholder.com/150',
     },
@@ -171,6 +171,7 @@ const RideRequest = () => {
               startIcon={<CarIcon />}
             >
               Search for Rides
+              
             </Button>
           </Grid>
         </Grid>
@@ -212,7 +213,7 @@ const RideRequest = () => {
                         Departure: {driver.departureTime}
                       </Typography>
                       <Typography variant="body2" color="primary">
-                        ${driver.price} per seat
+                        ₹{driver.price} per seat
                       </Typography>
                     </Box>
                   }
@@ -265,7 +266,7 @@ const RideRequest = () => {
                 <ListItem>
                   <ListItemText
                     primary="Price"
-                    secondary={`$${selectedDriver.price} per seat`}
+                    secondary={`₹${selectedDriver.price} per seat`}
                   />
                 </ListItem>
                 <ListItem>
